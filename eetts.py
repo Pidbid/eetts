@@ -53,13 +53,14 @@ def delete_mp3_files(current_filename: str):
             if file.endswith(".mp3"):
                 file_path = os.path.join("/output", file)
                 try:
-                    if file_path == os.path.join("/output", current_filename):
+                    if (
+                        int(time.time() * 1000) - int(file.split(".")[0]) < 3600000
+                    ):  # 删除一个小时前的文件
                         continue
                     os.remove(file_path)
                     print(f"Deleted file: {file_path}")
                 except Exception as e:
                     print(f"Error deleting file {file_path}: {e}")
-        time.sleep(60)  # 每分钟检查一次
 
 
 # middleware
