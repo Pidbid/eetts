@@ -67,18 +67,23 @@ def delete_mp3_files(current_filename: str):
 @app.middleware("http")
 async def token_handler(request: Request, call_next):
     token = ""
-    if request.method == "GET":
+    try:
         token = request.query_params.get("token")
-    elif request.method == "POST":
-        token = await request.json().get("token")
-    if not token or token != os.environ.get("TOKEN"):
+        if not token:
+            request_json = await request.json()
+            token = request_json.get("token")
+        if not token or token != os.environ.get("TOKEN"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No authorization token provided",
+            )
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No authorization token provided",
         )
-    else:
-        response = await call_next(request)
-        return response
+    response = await call_next(request)
+    return response
 
 
 @app.get("/voices")
