@@ -41,8 +41,7 @@ jobs:
               exit 1
             fi
             tag_name="v$version"
-            existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag_name" --jq '.object.sha' 2>/dev/null || true)"
-            if [[ -n "$existing_sha" ]]; then
+            if existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag_name" --jq '.object.sha' 2>/dev/null)"; then
               echo "Version $tag_name is already tagged at $existing_sha; no release is needed."
               echo "publish=false" >> "$GITHUB_OUTPUT"
             else
