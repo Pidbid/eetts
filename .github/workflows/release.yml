@@ -9,8 +9,6 @@ on:
       - CI
     types:
       - completed
-    branches:
-      - main
 
 permissions:
   actions: write
@@ -22,16 +20,17 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SOURCE_SHA: ${{ github.event_name == 'push' && github.sha || github.event.workflow_run.head_sha }}
+      SOURCE_REF: ${{ github.event_name == 'push' && github.sha || github.event.repository.default_branch }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.SOURCE_SHA }}
+          ref: ${{ env.SOURCE_REF }}
           fetch-depth: 0
 
       - id: version
         name: Resolve release version
         run: |
+          source_sha="$(git rev-parse HEAD)"
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             tag_name="$GITHUB_REF_NAME"
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -47,7 +46,7 @@ jobs:
               echo "Version $tag_name is already tagged at $existing_sha; no release is needed."
               echo "publish=false" >> "$GITHUB_OUTPUT"
             else
-              gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag_name" -f sha="$SOURCE_SHA"
+              gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag_name" -f sha="$source_sha"
               echo "publish=true" >> "$GITHUB_OUTPUT"
             fi
           fi

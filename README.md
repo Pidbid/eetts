@@ -83,4 +83,4 @@ If these values are not configured, a release still succeeds and Docker publicat
 
 ## Releases
 
-After CI succeeds on `main`, the release workflow reads `VERSION` from `eetts.py`. If that version has not been published, it creates the corresponding `v*` tag and GitHub Release, then requests Docker publication. Bump `VERSION` and update [CHANGELOG.md](CHANGELOG.md) for every new release. Manually pushed `v*` tags are also supported.
+After a CI run succeeds, the release workflow checks the current `main` branch and reads `VERSION` from `eetts.py`. If that version has not been published, it creates the corresponding `v*` tag and GitHub Release, then requests Docker publication. Bump `VERSION` and update [CHANGELOG.md](CHANGELOG.md) for every new release. Existing versions are skipped, and manually pushed `v*` tags are also supported.
