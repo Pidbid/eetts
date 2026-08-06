@@ -4,21 +4,68 @@ on:
   push:
     tags:
       - "v*"
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
+  actions: write
   contents: write
 
 jobs:
   release:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_SHA: ${{ github.event_name == 'push' && github.sha || github.event.workflow_run.head_sha }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - id: version
+        name: Resolve release version
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            tag_name="$GITHUB_REF_NAME"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            version="$(sed -n 's/^VERSION = "\([^"]*\)"/\1/p' eetts.py)"
+            if [[ -z "$version" ]]; then
+              echo "Unable to read VERSION from eetts.py" >&2
+              exit 1
+            fi
+            tag_name="v$version"
+            existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag_name" --jq '.object.sha' 2>/dev/null || true)"
+            if [[ -n "$existing_sha" ]]; then
+              echo "Version $tag_name is already tagged at $existing_sha; no release is needed."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+            else
+              gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag_name" -f sha="$SOURCE_SHA"
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
       - name: Publish release
+        if: steps.version.outputs.publish == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
         run: |
           if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG_NAME already exists."
           else
             gh release create "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "eetts $TAG_NAME"
           fi
+
+      - name: Request Docker publication
+        if: github.event_name == 'workflow_run' && steps.version.outputs.publish == 'true'
+        env:
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
+        run: gh workflow run docker-publish.yml --repo "$GITHUB_REPOSITORY" --ref main -f version="$TAG_NAME" -f publish_latest=true
