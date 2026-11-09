@@ -34,7 +34,7 @@ def test_health_does_not_require_authentication(client: TestClient) -> None:
     response = client.get("/healthz")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": "1.1.0"}
+    assert response.json() == {"status": "ok", "version": "1.1.1"}
 
 
 def test_protected_route_rejects_missing_token(client: TestClient) -> None:
