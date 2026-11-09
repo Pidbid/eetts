@@ -25,7 +25,7 @@ from fastapi.security import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 LOGGER = logging.getLogger("eetts")
 
 
